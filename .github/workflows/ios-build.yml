@@ -22,12 +22,17 @@ jobs:
     - name: Flutter doctor
       run: flutter doctor -v
       
-    - name: Install dependencies
-      run: flutter pub get
-      
     - name: Clean Flutter
       run: flutter clean
       
+    - name: Install dependencies
+      run: flutter pub get
+      
+    - name: Verify Flutter files
+      run: |
+        ls -la ios/Flutter/
+        cat ios/Flutter/Generated.xcconfig || echo "Generated.xcconfig not found"
+        
     - name: Install CocoaPods
       run: |
         cd ios
