@@ -41,13 +41,15 @@ jobs:
         
     - name: Build iOS app (Flutter)
       run: |
-        flutter build ios --release --no-codesign --verbose
+        flutter build ios --release --no-codesign --verbose 2>&1 | tee build.log
       env:
         FLUTTER_BUILD_MODE: release
         SWIFT_OPTIMIZATION_LEVEL: -Onone
         
     - name: Check build logs
       run: |
+        echo "=== Build Log File ==="
+        cat build.log || echo "No build.log found"
         echo "=== Build Directory Contents ==="
         find build -type f -name "*.log" -exec echo "=== {} ===" \; -exec cat {} \;
         echo "=== iOS Build Directory ==="
