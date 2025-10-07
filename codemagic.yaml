@@ -1,0 +1,38 @@
+workflows:
+  ios-workflow:
+    name: iOS Workflow
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Set up keychain to be used for codesigning
+        script: |
+          keychain initialize
+      - name: Set up signing certificate
+        script: |
+          app-store-connect fetch-signing-files com.jumpz.app --type IOS_APP_STORE --create
+      - name: Set up provisioning profile
+        script: |
+          app-store-connect fetch-signing-files com.jumpz.app --type IOS_APP_STORE --create
+      - name: Install pods
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+      - name: Flutter analyze
+        script: |
+          flutter analyze
+      - name: Flutter unit tests
+        script: |
+          flutter test
+      - name: Build ipa for distribution
+        script: |
+          flutter build ipa --release
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - group name

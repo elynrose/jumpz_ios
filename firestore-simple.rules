@@ -1,0 +1,28 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - users can only access their own data
+    match /users/{userId} {
+      // Allow read/write access only to the authenticated user's own document
+      allow read, write, create: if request.auth != null && request.auth.uid == userId;
+      
+      // Subcollections under user documents
+      match /jumpSessions/{sessionId} {
+        // Users can only access their own jump sessions
+        allow read, write, create: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      match /dailyProgress/{date} {
+        // Users can only access their own daily progress
+        allow read, write, create: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

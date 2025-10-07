@@ -1,0 +1,43 @@
+name: jumpz
+description: A gamified jump‑tracking alarm app built with Flutter and Firebase.
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+version: 1.0.0+1
+
+environment:
+  sdk: '>=2.17.0 <4.0.0'
+  flutter: '>=2.10.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.15.3
+  cloud_firestore: ^4.13.6
+  flutter_local_notifications: ^19.4.2
+  sensors_plus: ^3.0.2
+  fl_chart: ^1.1.1
+  provider: ^6.1.2
+  intl: ^0.19.0
+  video_player: ^2.8.2
+  cached_network_image: ^3.3.1
+  camera: ^0.10.6
+  # google_mlkit_pose_detection: ^0.10.0
+  share_plus: ^7.2.2
+  permission_handler: ^11.3.1
+  image_gallery_saver: ^2.0.3
+  # in_app_purchase: ^3.2.3  # Temporarily disabled due to iOS 17 StoreKit compatibility issues
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/videos/

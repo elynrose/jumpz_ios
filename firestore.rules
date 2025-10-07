@@ -1,0 +1,137 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - users can access their own data and read others for leaderboard
+    match /users/{userId} {
+      // Allow read/write access to the authenticated user's own document
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow reading other users' data for leaderboard (only public fields)
+      allow read: if request.auth != null;
+      
+      // Allow users to create their own document on first signup
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // Subcollections under user documents
+      match /jumpSessions/{sessionId} {
+        // Users can only access their own jump sessions
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      match /dailyProgress/{date} {
+        // Users can access their own daily progress
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        
+        // Allow reading other users' daily progress for leaderboard (only jumps field)
+        allow read: if request.auth != null;
+      }
+    }
+    
+    // Helper functions for data validation
+    function isValidUserData() {
+      return request.resource.data.keys().hasAll(['email', 'displayName', 'totalJumps']) &&
+        request.resource.data.email is string &&
+        request.resource.data.displayName is string &&
+        request.resource.data.totalJumps is int &&
+        request.resource.data.totalJumps >= 0;
+    }
+    
+    function isValidJumpSession() {
+      return request.resource.data.keys().hasAll(['count', 'timestamp']) &&
+        request.resource.data.count is int &&
+        request.resource.data.count >= 0 &&
+        request.resource.data.timestamp is timestamp;
+    }
+    
+    function isValidDailyProgress() {
+      return request.resource.data.keys().hasAll(['jumps', 'date', 'lastUpdated']) &&
+        request.resource.data.jumps is int &&
+        request.resource.data.jumps >= 0 &&
+        request.resource.data.date is timestamp &&
+        request.resource.data.lastUpdated is timestamp;
+    }
+    
+    function isValidDailyGoal() {
+      return request.resource.data.dailyGoal is int &&
+        request.resource.data.dailyGoal > 0 &&
+        request.resource.data.dailyGoal <= 1000; // Reasonable upper limit
+    }
+    
+    // Additional security rules for user document updates
+    match /users/{userId} {
+      // Validate user document structure on create/update
+      allow create: if request.auth != null && 
+        request.auth.uid == userId &&
+        isValidUserData();
+        
+      // Validate updates to user document
+      allow update: if request.auth != null && 
+        request.auth.uid == userId &&
+        // Allow updates to specific fields only
+        (request.resource.data.dailyGoal is int && request.resource.data.dailyGoal > 0) ||
+        (request.resource.data.totalJumps is int && request.resource.data.totalJumps >= 0) ||
+        (request.resource.data.goalStreak is int && request.resource.data.goalStreak >= 0) ||
+        (request.resource.data.lastActivity is timestamp) ||
+        (request.resource.data.goalUpdatedAt is timestamp) ||
+        (request.resource.data.lastStreakUpdate is timestamp);
+    }
+    
+    // Rate limiting for jump sessions (prevent spam)
+    match /users/{userId}/jumpSessions/{sessionId} {
+      allow create: if request.auth != null && 
+        request.auth.uid == userId &&
+        isValidJumpSession() &&
+        // Rate limiting: max 1 session per minute
+        request.time > resource.data.timestamp + duration.value(60, 's');
+    }
+    
+    // Daily progress validation
+    match /users/{userId}/dailyProgress/{date} {
+      allow create, update: if request.auth != null && 
+        request.auth.uid == userId &&
+        isValidDailyProgress() &&
+        // Ensure date matches the document ID
+        request.resource.data.date.toDate().toIso8601String().split('T')[0] == date;
+    }
+    
+           // Wall Posts collection - community posts
+           match /wallPosts/{postId} {
+             // Anyone can read non-reported posts
+             allow read: if request.auth != null && 
+               !(resource.data.isReported == true);
+             
+             // Users can create their own posts
+             allow create: if request.auth != null && 
+               request.auth.uid == request.resource.data.userId &&
+               request.resource.data.keys().hasAll(['userId', 'userDisplayName', 'content', 'timestamp']) &&
+               request.resource.data.content is string &&
+               request.resource.data.content.size() <= 255 &&
+               request.resource.data.content.size() > 0;
+             
+             // Users can update their own posts (likes, reports)
+             allow update: if request.auth != null && (
+               // Author can update their own posts
+               request.auth.uid == resource.data.userId ||
+               // Anyone can like/unlike posts
+               (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy']) &&
+                request.resource.data.likes is int &&
+                request.resource.data.likedBy is list) ||
+               // Anyone can report posts
+               (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportCount', 'reportedBy', 'isReported']) &&
+                request.resource.data.reportCount is int &&
+                request.resource.data.reportedBy is list &&
+                request.resource.data.isReported is bool)
+             );
+             
+             // Users can delete their own posts
+             allow delete: if request.auth != null && 
+               request.auth.uid == resource.data.userId;
+           }
+           
+           // Deny all other access
+           match /{document=**} {
+             allow read, write: if false;
+           }
+  }
+}
