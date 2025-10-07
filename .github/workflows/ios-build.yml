@@ -16,39 +16,28 @@ jobs:
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: '3.27.0'
+        flutter-version: '3.19.6'
         channel: 'stable'
         
     - name: Flutter doctor
       run: flutter doctor -v
       
-    - name: Clean Flutter
-      run: flutter clean
-      
     - name: Install dependencies
-      run: flutter pub get
-      
-    - name: Verify Flutter files
       run: |
-        ls -la ios/Flutter/
-        cat ios/Flutter/Generated.xcconfig || echo "Generated.xcconfig not found"
+        flutter pub get
+        flutter pub deps
         
     - name: Install CocoaPods
       run: |
         cd ios
         sudo gem install cocoapods
-        pod install --repo-update
+        pod install
         
     - name: Build iOS app (no signing)
       run: |
-        flutter build ios --release --no-codesign
+        flutter build ios --release --no-codesign --verbose
       env:
         FLUTTER_BUILD_MODE: release
-        
-    - name: List build artifacts
-      run: |
-        find build -name "*.app" -type d
-        ls -la build/ios/iphoneos/ || echo "No build directory found"
         
     - name: Create IPA manually
       run: |
